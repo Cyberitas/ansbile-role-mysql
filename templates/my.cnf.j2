@@ -1,0 +1,28 @@
+################################################################
+#   DO NOT manually alter this file, it is managed by Ansible   #
+#   ANY changes made manually to this file will be              #
+#   automatically overwritten  - Cyberitas Technologies        #
+################################################################
+
+
+[mysqld]
+auto_increment_offset={{ mysql_auto_increment_offset }}
+auto_increment_increment={{ mysql_auto_increment_increment }}
+default-storage-engine={{ mysql_default_storage_engine }}
+{{ mysql_skip_character_set_client_handshake }}
+innodb_file_per_table={{ mysql_innodb_file_per_table }}
+character-set-server={{ mysql_character_set_server }}
+collation-server ={{ mysql_collation_server }}
+innodb_file_per_table={{ mysql_innodb_file_per_table }}
+max_allowed_packet={{ mysql_max_allowed_packet }}
+datadir={{ mysql_datadir }}
+socket={{ mysql_socket }}
+symbolic-links={{ mysql_symbolic_links }}
+
+[mysqld_safe]
+log-error={{ mysql_log_error }}
+pid-file={{ mysql_pid_file }}
+
+!includedir /etc/my.cnf.d
+	@FindBy(css="")
+	private WebElement webElement;

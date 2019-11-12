@@ -1,0 +1,45 @@
+---
+- name: Install MySQL Community Server.
+  yum:
+    name: http://repo.mysql.com/mysql57-community-release-el7-8.noarch.rpm
+    state: present
+
+- name: Install MySQL and python MySQL extension
+  package:
+    name: ['mysql-community-server', 'mysql-community-libs', 'mysql-community-libs-compat', 'MySQL-python']
+    state: present
+
+- name: Ensure service is started
+  service:
+    name: mysqld
+    state: started
+    enabled: yes
+
+- name: set pass.
+  shell: mysqladmin -uroot -p$(grep "temporary password" /var/log/mysqld.log  | cut -d' ' -f11) password "{{ mysql_pass }}"
+
+- name: Create database user and privileges.
+  mysql_user:
+    login_user: root
+    login_password: test_pass_!
+    name: "{{ item.db_user }}"
+    password: "{{ item.db_passwd }}"j
+    priv: "{{ item.db_name }}.*:ALL"
+    state: present
+  loop: "{{ application_database_users }}"
+  when: application_database_users is defined
+
+- name: Create application databases when they exist
+  mysql_db:
+    name: "{{ item.db_name }}"
+    state: present
+  loop: "{{ application_databases }}"
+  when: application_databases is defined
+
+- name: Import application database schemas if they exist.
+  mysql_db:
+    state: import
+    name: "{{ item.db_name }}"
+    target: "{{ item.db_archive }}"
+  loop: "{{ application_databases }}"
+  when: application_databases is defined
