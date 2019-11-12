@@ -23,7 +23,7 @@
     login_user: root
     login_password: test_pass_!
     name: "{{ item.db_user }}"
-    password: "{{ item.db_passwd }}"j
+    password: "{{ item.db_passwd }}"
     priv: "{{ item.db_name }}.*:ALL"
     state: present
   loop: "{{ application_database_users }}"
