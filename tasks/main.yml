@@ -15,8 +15,8 @@
     state: started
     enabled: yes
 
-- name: set pass.
-  shell: mysqladmin -uroot -p$(grep "temporary password" /var/log/mysqld.log  | cut -d' ' -f11) password "{{ mysql_pass }}"
+#- name: set pass.
+#  shell: mysqladmin -uroot -p$(grep "temporary password" /var/log/mysqld.log  | cut -d' ' -f11) password "{{ mysql_pass }}"
 
 - name: Create database user and privileges.
   mysql_user:
