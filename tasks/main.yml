@@ -1,45 +1,75 @@
 ---
-- name: Install MySQL Community Server.
-  yum:
-    name: http://repo.mysql.com/mysql57-community-release-el7-8.noarch.rpm
-    state: present
+- name: Install MySQL Community Server version 5.7
+  block:
+    - name: get repository for MySQL 5.7 Server Community
+      yum:
+        name: http://repo.mysql.com/mysql57-community-release-el7-8.noarch.rpm
+        state: present
 
-- name: Install MySQL and python MySQL extension
-  package:
-    name: ['mysql-community-server', 'mysql-community-libs', 'mysql-community-libs-compat', 'MySQL-python']
-    state: present
+    - name: Install MySQL and python MySQL extension
+      package:
+        name: ['mysql-community-server', 'mysql-community-libs', 'mysql-community-libs-compat', 'MySQL-python']
+        state: present
 
-- name: Ensure service is started
-  service:
-    name: mysqld
-    state: started
-    enabled: yes
+    - name: Turn off password validation
+      command: "echo 'MYSQLD_OPTS=--validate-password=off' >> /etc/sysconfig/mysql"
 
-#- name: set pass.
-#  shell: mysqladmin -uroot -p$(grep "temporary password" /var/log/mysqld.log  | cut -d' ' -f11) password "{{ mysql_pass }}"
+    - name: Configure my.cnf file.
+      template:
+        src: my.cnf.j2
+        dest: /etc/my.cnf
+        owner: root
+        group: root
+        mode: 0644
+        backup: yes
 
-- name: Create database user and privileges.
-  mysql_user:
-    login_user: root
-    login_password: test_pass_!
-    name: "{{ item.db_user }}"
-    password: "{{ item.db_passwd }}"
-    priv: "{{ item.db_name }}.*:ALL"
-    state: present
-  loop: "{{ application_database_users }}"
-  when: application_database_users is defined
+    - name: Ensure service is started
+      service:
+        name: mysqld
+        state: started
+        enabled: yes
 
-- name: Create application databases when they exist
-  mysql_db:
-    name: "{{ item.db_name }}"
-    state: present
-  loop: "{{ application_databases }}"
-  when: application_databases is defined
+    - name: Pause before altering password
+      pause:
+        seconds: 10
 
-- name: Import application database schemas if they exist.
-  mysql_db:
-    state: import
-    name: "{{ item.db_name }}"
-    target: "{{ item.db_archive }}"
-  loop: "{{ application_databases }}"
-  when: application_databases is defined
+    - name: Extract temporary password line from mysqld.log
+      shell: |
+        grep -i 'temporary password' /var/log/mysqld.log
+      register: temp_string
+
+    - name: Store temporary password from extracted log line.
+      set_fact:
+        temp_root_passwd: "{{ temp_string.stdout.split() [10] }}"
+
+    - name: alter root password
+      shell: |
+        mysqladmin -u root -p'{{ temp_root_passwd }}' password '{{ mysql_root_passwd }}'
+
+    - name: Create database user and privileges.
+      mysql_user:
+        login_user: root
+        login_password: "{{ mysql_root_passwd }}"
+        name: "{{ item.db_user }}"
+        password: "{{ item.db_passwd }}"
+        priv: "{{ item.db_name }}.*:ALL"
+        state: present
+      loop: "{{ application_database_users }}"
+      when: application_database_users is defined
+
+    - name: Create application databases when they exist
+      mysql_db:
+        login_user: root
+        login_password: "{{ mysql_root_passwd }}"
+        name: "{{ item.db_name }}"
+        state: present
+      loop: "{{ application_databases }}"
+      when: application_databases is defined
+
+    # mysql_db module appears to have a bug when trying to decompress .gz files
+    # Currently using shell to read and pass sql file to mysql to impprt
+    # TODO Check back with mysql_db module for fix.
+    - name: Import application database schemas if they exist.
+      shell: zcat "{{ item.db_archive }}" | mysql -uroot -p"{{ mysql_root_passwd }}" "{{ item.db_name }}"
+      loop: "{{ application_databases }}"
+      when: application_databases is defined
