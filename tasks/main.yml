@@ -38,19 +38,19 @@
       yum:
         name: http://repo.mysql.com/mysql57-community-release-el7-8.noarch.rpm
         state: present
-      when: sysconf_mysql.stat.exists == false
+      when: sysconf_mysql.stat.exists|bool
 
     - name: Install MySQL and python MySQL extension
       package:
         name: ['mysql-community-server', 'mysql-community-libs', 'mysql-community-libs-compat', 'MySQL-python']
         state: present
-      when: sysconf_mysql.stat.exists == false
+      when: sysconf_mysql.stat.exists|bool
 
     - name: Add /etc/sysconfig/mysql when file does not exist
       file:
         path: /etc/sysconfig/mysql
         state: present
-      when: sysconf_mysql.stat.exists == false
+      when: sysconf_mysql.stat.exists|bool
 
     - name: Check for line in /etc/sysconfig/mysql
       lineinfile:
@@ -76,23 +76,23 @@
     - name: Pause before altering password
       pause:
         seconds: 10
-      when: sysconf_mysql.stat.exists == false
+      when: sysconf_mysql.stat.exists|bool
 
     - name: Extract temporary password line from mysqld.log
       shell: |
         grep -i 'temporary password' /var/log/mysqld.log
       register: temp_string
-      when: sysconf_mysql.stat.exists == false
+      when: sysconf_mysql.stat.exists|bool
 
     - name: Store temporary password from extracted log line.
       set_fact:
         temp_root_passwd: "{{ temp_string.stdout.split() [10] }}"
-      when: sysconf_mysql.stat.exists == false
+      when: sysconf_mysql.stat.exists|bool
 
     - name: alter root password
       shell: |
         mysqladmin -u root -p'{{ temp_root_passwd }}' password '{{ mysql_root_passwd }}'
-      when: sysconf_mysql.stat.exists == false
+      when: sysconf_mysql.stat.exists|bool
 
     - name: Create database user and privileges.
       mysql_user:
@@ -103,7 +103,7 @@
         priv: "{{ item.db_name }}.*:ALL"
         state: present
       loop: "{{ application_database_users }}"
-      when: application_database_users is defined and sysconf_mysql.stat.exists == false
+      when: application_database_users is defined and sysconf_mysql.stat.exists|bool
 
     - name: Create application databases when they exist
       mysql_db:
@@ -112,7 +112,7 @@
         name: "{{ item.db_name }}"
         state: present
       loop: "{{ application_databases }}"
-      when: application_databases is defined and sysconf_mysql.stat.exists == false
+      when: application_databases is defined and sysconf_mysql.stat.exists|bool
 
     # mysql_db module appears to have a bug when trying to decompress .gz files
     # Currently using shell to read and pass sql file to mysql to impprt
@@ -120,4 +120,4 @@
     - name: Import application database schemas if they exist.
       shell: zcat "{{ item.db_archive }}" | mysql -uroot -p"{{ mysql_root_passwd }}" "{{ item.db_name }}"
       loop: "{{ application_databases }}"
-      when: application_databases is defined and sysconf_mysql.stat.exists == false
+      when: application_databases is defined and sysconf_mysql.stat.exists|bool
