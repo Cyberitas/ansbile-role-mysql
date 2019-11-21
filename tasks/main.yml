@@ -1,7 +1,35 @@
 ---
-- name: Install MySQL Community Server version 5.7
+# These first 2 tasks are to test installation of mysql without doing a vagrant destroy
+#- name: Stop mysql
+#  service:
+#    name: mysqld
+#    state: stopped
+#    enabled: no
+#
+#- name: remove mysql to test installation
+#  yum:
+#    name: ['mysql-community-server', 'mysql-community-libs', 'mysql-community-libs-compat', 'MySQL-python']
+#    state: absent
+#
+#- name: remove mysql
+#  file:
+#    path: /var/lib/mysql
+#    state: absent
+#
+#- name: remove mysqld.log
+#  file:
+#    path: /var/log/mysqld.log
+#    state: absent
+#
+#- name: remove mysql.log
+#  file:
+#    path: /var/log/mysql.log
+#    state: absent
+
+# Starts here
+- name: Install MySQL 5.7 community edition
   block:
-    - name: get repository for MySQL 5.7 Server Community
+    - name: get repository for MySQL 5.7 Community Edition
       yum:
         name: http://repo.mysql.com/mysql57-community-release-el7-8.noarch.rpm
         state: present

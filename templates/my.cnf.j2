@@ -6,6 +6,7 @@
 
 
 [mysqld]
+plugin-load-add=auth_socket.so
 auto_increment_offset={{ mysql_auto_increment_offset }}
 auto_increment_increment={{ mysql_auto_increment_increment }}
 default-storage-engine={{ mysql_default_storage_engine }}
@@ -19,10 +20,7 @@ datadir={{ mysql_datadir }}
 socket={{ mysql_socket }}
 symbolic-links={{ mysql_symbolic_links }}
 
-[mysqld_safe]
+
 log-error={{ mysql_log_error }}
 pid-file={{ mysql_pid_file }}
 
-!includedir /etc/my.cnf.d
-	@FindBy(css="")
-	private WebElement webElement;
