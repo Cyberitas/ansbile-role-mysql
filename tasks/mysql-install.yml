@@ -1,0 +1,50 @@
+---
+- name: Install MySQL 5.7 community edition
+  block:
+
+    - name: get repository for MySQL 5.7 Community Edition
+      yum:
+        name: http://repo.mysql.com/mysql57-community-release-el7-8.noarch.rpm
+        state: present
+
+    - name: Install MySQL and python MySQL extension
+      package:
+        name: ['mysql-community-server', 'mysql-community-libs', 'mysql-community-libs-compat', 'MySQL-python']
+        state: present
+
+    - name: Configure password validation to off in /etc/sysconfig/mysql
+      copy:
+        src: mysql
+        dest: /etc/sysconfig/mysql
+        owner: root
+        group: root
+        mode: '0644'
+
+    - name: Configure my.cnf file.
+      template:
+        src: my.cnf.j2
+        dest: /etc/my.cnf
+        owner: root
+        group: root
+        mode: 0644
+        backup: yes
+
+    - name: Ensure service is started
+      service:
+        name: mysqld
+        state: started
+        enabled: yes
+
+    - name: Extract temporary password line from mysqld.log
+      shell: |
+        grep -i 'temporary password' /var/log/mysqld.log
+      register: temp_string
+
+    - name: Store temporary password from extracted log line.
+      set_fact:
+        temp_root_passwd: "{{ temp_string.stdout.split() [10] }}"
+
+    - name: alter root password
+      shell: |
+        mysqladmin -u root -p'{{ temp_root_passwd }}' password '{{ mysql_root_passwd }}'
+

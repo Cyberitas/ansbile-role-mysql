@@ -1,123 +1,21 @@
 ---
-# These first 2 tasks are to test installation of mysql without doing a vagrant destroy
-#- name: Stop mysql
-#  service:
-#    name: mysqld
-#    state: stopped
-#    enabled: no
-#
-#- name: remove mysql to test installation
-#  yum:
-#    name: ['mysql-community-server', 'mysql-community-libs', 'mysql-community-libs-compat', 'MySQL-python']
-#    state: absent
-#
-#- name: remove mysql
-#  file:
-#    path: /var/lib/mysql
-#    state: absent
-#
-#- name: remove mysqld.log
-#  file:
-#    path: /var/log/mysqld.log
-#    state: absent
-#
-#- name: remove mysql.log
-#  file:
-#    path: /var/log/mysql.log
-#    state: absent
+- include_tasks: remove-mysql.yml
+  when:
+    - reinstall_mysql is defined
+    - reinstall_mysql == True
 
-# Starts here
-- name: Install MySQL 5.7 community edition
-  block:
-    - name: Check if /etc/sysconfig/mysql file exits
-      stat:
-        path: /etc/sysconfig/mysql
-      register: sysconf_mysql
+- name: Check if mysql file in /etc/sysconfig exists
+  stat:
+    path: /etc/sysconfig/mysql
+  register: mysql_sysconf
 
-    - name: get repository for MySQL 5.7 Community Edition
-      yum:
-        name: http://repo.mysql.com/mysql57-community-release-el7-8.noarch.rpm
-        state: present
-      when: sysconf_mysql.stat.exists|bool
+- include_tasks: mysql-install.yml
+  when:
+    - msyql_sysconf is not defined
+    - mysql_sysconf.stat.exists == False
 
-    - name: Install MySQL and python MySQL extension
-      package:
-        name: ['mysql-community-server', 'mysql-community-libs', 'mysql-community-libs-compat', 'MySQL-python']
-        state: present
-      when: sysconf_mysql.stat.exists|bool
+- include_tasks: create-database.yml
+  when:
+    - recreate_db is defined
+    - recreate_db == True
 
-    - name: Add /etc/sysconfig/mysql when file does not exist
-      file:
-        path: /etc/sysconfig/mysql
-        state: present
-      when: sysconf_mysql.stat.exists|bool
-
-    - name: Check for line in /etc/sysconfig/mysql
-      lineinfile:
-        path: /etc/sysconfig/mysql
-        line: MYSQLD_OPTS=--validate-password=off
-        create: yes
-
-    - name: Configure my.cnf file.
-      template:
-        src: my.cnf.j2
-        dest: /etc/my.cnf
-        owner: root
-        group: root
-        mode: 0644
-        backup: yes
-
-    - name: Ensure service is started
-      service:
-        name: mysqld
-        state: started
-        enabled: yes
-
-    - name: Pause before altering password
-      pause:
-        seconds: 10
-      when: sysconf_mysql.stat.exists|bool
-
-    - name: Extract temporary password line from mysqld.log
-      shell: |
-        grep -i 'temporary password' /var/log/mysqld.log
-      register: temp_string
-      when: sysconf_mysql.stat.exists|bool
-
-    - name: Store temporary password from extracted log line.
-      set_fact:
-        temp_root_passwd: "{{ temp_string.stdout.split() [10] }}"
-      when: sysconf_mysql.stat.exists|bool
-
-    - name: alter root password
-      shell: |
-        mysqladmin -u root -p'{{ temp_root_passwd }}' password '{{ mysql_root_passwd }}'
-      when: sysconf_mysql.stat.exists|bool
-
-    - name: Create database user and privileges.
-      mysql_user:
-        login_user: root
-        login_password: "{{ mysql_root_passwd }}"
-        name: "{{ item.db_user }}"
-        password: "{{ item.db_passwd }}"
-        priv: "{{ item.db_name }}.*:ALL"
-        state: present
-      loop: "{{ application_database_users }}"
-      when: application_database_users is defined and sysconf_mysql.stat.exists|bool
-
-    - name: Create application databases when they exist
-      mysql_db:
-        login_user: root
-        login_password: "{{ mysql_root_passwd }}"
-        name: "{{ item.db_name }}"
-        state: present
-      loop: "{{ application_databases }}"
-      when: application_databases is defined and sysconf_mysql.stat.exists|bool
-
-    # mysql_db module appears to have a bug when trying to decompress .gz files
-    # Currently using shell to read and pass sql file to mysql to impprt
-    # TODO Check back with mysql_db module for fix.
-    - name: Import application database schemas if they exist.
-      shell: zcat "{{ item.db_archive }}" | mysql -uroot -p"{{ mysql_root_passwd }}" "{{ item.db_name }}"
-      loop: "{{ application_databases }}"
-      when: application_databases is defined and sysconf_mysql.stat.exists|bool

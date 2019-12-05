@@ -1,0 +1,25 @@
+---
+- name: remove mysql to test installation
+  yum:
+    name: ['mysql-community-server', 'mysql-community-libs', 'mysql-community-libs-compat', 'MySQL-python']
+    state: absent
+
+- name: remove mysql
+  file:
+    path: /var/lib/mysql
+    state: absent
+
+- name: remove mysqld.log
+  file:
+    path: /var/log/mysqld.log
+    state: absent
+
+- name: remove mysql.log
+  file:
+    path: /var/log/mysql.log
+    state: absent
+
+- name: remove /etc/sysconfig/msyql
+  file:
+    path: /etc/sysconfig/mysql
+    state: absent
