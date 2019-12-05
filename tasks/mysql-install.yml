@@ -47,4 +47,3 @@
     - name: alter root password
       shell: |
         mysqladmin -u root -p'{{ temp_root_passwd }}' password '{{ mysql_root_passwd }}'
-

@@ -1,21 +1,9 @@
 ---
+# Tasks to remove current mysql instance
 - include_tasks: remove-mysql.yml
-  when:
-    - reinstall_mysql is defined
-    - reinstall_mysql == True
 
-- name: Check if mysql file in /etc/sysconfig exists
-  stat:
-    path: /etc/sysconfig/mysql
-  register: mysql_sysconf
-
+# Tasks to install MySQL and set a permanent root password
 - include_tasks: mysql-install.yml
-  when:
-    - msyql_sysconf is not defined
-    - mysql_sysconf.stat.exists == False
 
+# Tasks to create users and databases when provided
 - include_tasks: create-database.yml
-  when:
-    - recreate_db is defined
-    - recreate_db == True
-
