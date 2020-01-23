@@ -28,7 +28,7 @@ application_database_users:
 Dependencies
 ------------
 
-None.
+None..
 
 Example Playbook
 ----------------
